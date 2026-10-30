@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const el = Object.fromEntries(['home', 'player', 'video', 'introFrame', 'surface', 'instructions', 'controls', 'timeline', 'progress', 'point', 'seek', 'notice'].map(id => [id, document.getElementById(id)]));
+  const el = Object.fromEntries(['home', 'player', 'video', 'surface', 'instructions', 'controls', 'timeline', 'progress', 'point', 'seek', 'notice'].map(id => [id, document.getElementById(id)]));
   const INTRO_MS = 7000;
   const CONTROLS_IDLE_MS = 2000;
   let phase = 'home';
@@ -69,31 +69,65 @@
     el.player.hidden = true;
     el.home.hidden = false;
     el.instructions.hidden = true;
-    el.introFrame.hidden = true;
     [el.instructions, el.controls, el.timeline].forEach(item => item.classList.remove('breathe'));
     setNotice('');
     showControls(false);
     updateProgress();
   }
-  function start() {
+  function waitForVideo(test, events) {
+    if (test()) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const cleanup = () => {
+        clearTimeout(timeout);
+        events.forEach(event => el.video.removeEventListener(event, check));
+        el.video.removeEventListener('error', failed);
+      };
+      const check = () => { if (test()) { cleanup(); resolve(); } };
+      const failed = () => { cleanup(); reject(new Error('Video unavailable')); };
+      const timeout = setTimeout(failed, 15000);
+      events.forEach(event => el.video.addEventListener(event, check));
+      el.video.addEventListener('error', failed);
+      if (el.video.error) failed();
+    });
+  }
+  async function preparePreview() {
+    if (el.video.error) el.video.load();
+    await waitForVideo(() => el.video.readyState >= 1, ['loadedmetadata']);
+    el.video.currentTime = Math.min(1, el.video.duration / 2);
+    await waitForVideo(() => !el.video.seeking && el.video.readyState >= 2, ['seeked', 'loadeddata', 'canplay']);
+  }
+  async function start() {
     if (phase !== 'home') return;
+    phase = 'loading';
+    const activeSession = ++session;
+    el.home.setAttribute('aria-busy', 'true');
+    setNotice('Cargando video…');
+    el.video.pause();
+    try { await preparePreview(); }
+    catch {
+      if (session !== activeSession) return;
+      phase = 'home';
+      el.home.removeAttribute('aria-busy');
+      setNotice('No se pudo cargar el video. Toca la portada para reintentar.');
+      return;
+    }
+    if (session !== activeSession) return;
+    el.home.removeAttribute('aria-busy');
+    setNotice('');
     phase = 'intro';
-    session++;
     el.home.hidden = true;
     el.player.hidden = false;
-    el.video.pause();
-    el.video.currentTime = 0;
     syncPlaybackControl();
     el.instructions.hidden = false;
-    el.introFrame.hidden = false;
     updateProgress();
     showControls(true);
     el.controls.inert = el.timeline.inert = true;
     [el.instructions, el.controls, el.timeline].forEach(item => item.classList.add('breathe'));
     introTimer = setTimeout(() => {
+      if (session !== activeSession) return;
       phase = 'playing';
+      el.video.currentTime = 0;
       el.instructions.hidden = true;
-      el.introFrame.hidden = true;
       updateProgress();
       [el.instructions, el.controls, el.timeline].forEach(item => item.classList.remove('breathe'));
       el.controls.inert = el.timeline.inert = false;

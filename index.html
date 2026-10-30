@@ -14,7 +14,6 @@
     </button>
     <section id="player" aria-label="Video" hidden>
       <video id="video" src="Images/Video.mp4" preload="auto" playsinline disablepictureinpicture></video>
-      <img id="introFrame" src="Images/Video_Indicaciones.jpg" alt="" draggable="false" hidden>
       <button id="surface" aria-label="Mostrar u ocultar controles"></button>
       <img id="instructions" src="Images/Indicaciones.png" alt="Toca la pantalla para controlar el video a tu ritmo." draggable="false" hidden>
       <nav id="controls" aria-label="Controles de video" hidden>
@@ -50,8 +49,8 @@
           <input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Posición del video">
         </div>
       </div>
-      <button id="notice" role="status" hidden></button>
     </section>
+    <button id="notice" role="status" hidden></button>
   </main>
   <script src="player.js"></script>
 </body>

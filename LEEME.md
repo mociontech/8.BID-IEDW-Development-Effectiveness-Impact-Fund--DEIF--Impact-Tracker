@@ -10,7 +10,7 @@ Toca la portada para comenzar. Las indicaciones, los controles y la barra pulsan
 
 Los controles conservan los iconos independientes y su versión azul al presionarlos. El botón central muestra Pause durante la reproducción y Start cuando el video está pausado, también durante las instrucciones.
 
-Durante las instrucciones se muestra `Images/Video_Indicaciones.jpg` y la barra se mantiene al 50 %, con el video detenido en cero. Después de los 7 segundos se retira la imagen y la barra refleja el progreso real.
+Durante las instrucciones se muestra el propio video, pausado en el segundo 1 (o a la mitad si dura menos de 2 segundos). La portada permanece visible hasta que el fotograma está listo. La barra de demostración se mantiene al 50 %. Después de 7 segundos, el video se reproduce desde cero. Al sustituir Images/Video.mp4 ya no hace falta actualizar una imagen independiente.
 
 Para reemplazar el video, guarda el nuevo archivo como `Images/Video.mp4` y recarga la página. Usa MP4 compatible con el navegador (habitualmente H.264/AAC), preferentemente 1920 × 1080. Reemplaza también `Images/Video_Indicaciones.jpg` por un fotograma del nuevo archivo. Tanto el video como el fotograma se muestran completos con `object-fit: contain`, sin deformación ni recortes.
 
