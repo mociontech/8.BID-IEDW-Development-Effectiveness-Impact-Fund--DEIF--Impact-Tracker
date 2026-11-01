@@ -1,6 +1,7 @@
 (() => {
   'use strict';
   const el = Object.fromEntries(['home', 'player', 'video', 'surface', 'instructions', 'controls', 'timeline', 'progress', 'point', 'seek', 'notice'].map(id => [id, document.getElementById(id)]));
+  const analytics = globalThis.BIDAnalytics?.create(el.video);
   const INTRO_MS = 7000;
   const CONTROLS_IDLE_MS = 2000;
   let phase = 'home';
@@ -48,6 +49,7 @@
   async function play() {
     if (phase !== 'playing') return;
     const activeSession = session;
+    analytics?.action('play');
     setNotice('');
     try { await el.video.play(); }
     catch {
@@ -57,7 +59,8 @@
       }
     }
   }
-  function returnHome() {
+  function returnHome(reason = 'home') {
+    analytics?.end(reason);
     session++;
     activePointers.clear();
     clearTimeout(introTimer);
@@ -115,6 +118,7 @@
     el.home.removeAttribute('aria-busy');
     setNotice('');
     phase = 'intro';
+    analytics?.start();
     el.home.hidden = true;
     el.player.hidden = false;
     syncPlaybackControl();
@@ -127,6 +131,7 @@
       if (session !== activeSession) return;
       phase = 'playing';
       el.video.currentTime = 0;
+      analytics?.enable();
       el.instructions.hidden = true;
       updateProgress();
       [el.instructions, el.controls, el.timeline].forEach(item => item.classList.remove('breathe'));
@@ -135,9 +140,11 @@
       play();
     }, INTRO_MS);
   }
-  function seekTo(seconds) {
+  function seekTo(seconds, action = 'seek') {
     if (phase !== 'playing' || !Number.isFinite(el.video.duration)) return;
-    el.video.currentTime = Math.max(0, Math.min(el.video.duration, seconds));
+    const target = Math.max(0, Math.min(el.video.duration, seconds));
+    analytics?.action(action, target);
+    el.video.currentTime = target;
     updateProgress();
   }
   el.home.addEventListener('click', start);
@@ -177,16 +184,16 @@
   el.controls.addEventListener('click', event => {
     if (phase !== 'playing') return;
     switch (event.target.dataset.action) {
-      case 'restart': seekTo(0); play(); break;
-      case 'back': seekTo(el.video.currentTime - 10); break;
+      case 'restart': seekTo(0, 'restart'); play(); break;
+      case 'back': seekTo(el.video.currentTime - 10, 'backward'); break;
       case 'toggle': el.video.paused ? play() : el.video.pause(); break;
-      case 'forward': seekTo(el.video.currentTime + 10); break;
-      case 'home': returnHome(); break;
+      case 'forward': seekTo(el.video.currentTime + 10, 'forward'); break;
+      case 'home': analytics?.action('home'); returnHome(); break;
     }
   });
   el.seek.addEventListener('input', () => seekTo(Number(el.seek.value) / 1000 * el.video.duration));
   el.notice.addEventListener('click', () => { if (el.video.error) el.video.load(); play(); });
-  el.video.addEventListener('ended', returnHome);
+  el.video.addEventListener('ended', () => returnHome('ended'));
   el.video.addEventListener('timeupdate', updateProgress);
   el.video.addEventListener('loadedmetadata', updateProgress);
   el.video.addEventListener('play', () => {
