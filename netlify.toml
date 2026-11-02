@@ -1,9 +1,7 @@
 [build]
-  command = "node scripts/validate-firebase.mjs"
+  command = ""
   publish = "."
 
-[build.environment]
-  NODE_VERSION = "22"
 
 [[headers]]
   for = "/analytics/*"
