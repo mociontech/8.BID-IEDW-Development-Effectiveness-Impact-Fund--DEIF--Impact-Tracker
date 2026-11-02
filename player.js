@@ -168,7 +168,7 @@
     switch (event.target.closest('button')?.dataset.action) {
       case 'restart': seekTo(0, 'restart'); play(); break;
       case 'back': seekTo(seekController.position - 10, 'backward'); break;
-      case 'toggle': el.video.paused ? play() : el.video.pause(); break;
+      case 'toggle': analytics?.press(el.video.paused ? 'play' : 'pause'); el.video.paused ? play() : el.video.pause(); break;
       case 'forward': seekTo(seekController.position + 10, 'forward'); break;
       case 'home': analytics?.action('home'); returnHome(); break;
     }
