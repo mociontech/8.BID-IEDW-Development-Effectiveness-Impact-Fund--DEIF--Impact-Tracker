@@ -13,7 +13,7 @@
       <img class="start-prompt breathe" src="Images/TocaParaComenzar.png" alt="" draggable="false">
     </button>
     <section id="player" aria-label="Video" hidden>
-      <video id="video" src="Images/Video.mp4" preload="auto" playsinline disablepictureinpicture></video>
+      <video id="video" data-video-src="Images/Video.mp4" preload="auto" playsinline disablepictureinpicture></video>
       <button id="surface" aria-label="Mostrar u ocultar controles"></button>
       <img id="instructions" src="Images/Indicaciones.png" alt="Toca la pantalla para controlar el video a tu ritmo." draggable="false" hidden>
       <nav id="controls" aria-label="Controles de video" hidden>
@@ -52,6 +52,6 @@
     </section>
     <button id="notice" role="status" hidden></button>
   </main>
-  <script src="analytics/config.js"></script><script src="analytics/tracker.js"></script><script src="player.js"></script>
+  <script src="playback/media.js"></script><script src="playback/controls.js"></script><script src="playback/video-cache.js"></script><script src="analytics/config.js"></script><script src="analytics/tracker.js"></script><script src="player.js"></script>
 </body>
 </html>

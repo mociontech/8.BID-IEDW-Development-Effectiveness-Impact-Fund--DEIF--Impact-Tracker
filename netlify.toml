@@ -2,8 +2,15 @@
   command = ""
   publish = "."
 
+[build.environment]
+  SECRETS_SCAN_OMIT_PATHS = "analytics/config.js"
 
 [[headers]]
   for = "/analytics/*"
+  [headers.values]
+    Cache-Control = "no-cache, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/playback/*"
   [headers.values]
     Cache-Control = "no-cache, max-age=0, must-revalidate"

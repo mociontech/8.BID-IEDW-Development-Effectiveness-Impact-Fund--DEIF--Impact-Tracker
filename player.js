@@ -3,11 +3,8 @@
   const el = Object.fromEntries(['home', 'player', 'video', 'surface', 'instructions', 'controls', 'timeline', 'progress', 'point', 'seek', 'notice'].map(id => [id, document.getElementById(id)]));
   const analytics = globalThis.BIDAnalytics?.create(el.video);
   const INTRO_MS = 7000;
-  const CONTROLS_IDLE_MS = 2000;
   let phase = 'home';
   let introTimer;
-  let controlsTimer;
-  const activePointers = new Set();
   let session = 0;
   let frame;
 
@@ -18,17 +15,22 @@
     button.setAttribute('aria-label', playing ? 'Pausar video' : 'Reproducir video');
   }
 
-  function resetControlsTimer() {
-    clearTimeout(controlsTimer);
-    if (phase !== 'playing' || el.controls.hidden || activePointers.size) return;
-    controlsTimer = setTimeout(() => showControls(false), CONTROLS_IDLE_MS);
-  }
-  function showControls(visible) {
-    clearTimeout(controlsTimer);
-    el.controls.hidden = el.timeline.hidden = !visible;
-    el.surface.setAttribute('aria-label', visible ? 'Ocultar controles' : 'Mostrar controles');
-    if (visible) resetControlsTimer();
-  }
+  const controlsIdle = globalThis.BIDPlayback.autoHide({
+    areas: [el.controls, el.timeline], active: () => phase === 'playing',
+    onChange: visible => {
+      el.controls.hidden = el.timeline.hidden = !visible;
+      el.surface.setAttribute('aria-label', visible ? 'Ocultar controles' : 'Mostrar controles');
+    },
+  });
+  const seekController = globalThis.BIDPlayback.createSeek(el.video, {
+    onRequest: (action, target) => analytics?.action(action, target),
+  });
+  const mediaReady = globalThis.BIDVideoCache?.prepare(el.video, {
+    onProgress: percent => {
+      if (phase === 'home' || phase === 'loading') setNotice(percent === 100 ? '' : `Preparando video${percent === null ? '...' : `... ${percent}%`}`);
+    },
+  });
+  function showControls(visible) { controlsIdle.show(visible); }
   function updateProgress() {
     const duration = el.video.duration;
     // During instructions, demonstrate both halves without changing the video position.
@@ -60,9 +62,10 @@
     }
   }
   function returnHome(reason = 'home') {
+    seekController.reset();
+    controlsIdle.reset();
     analytics?.end(reason);
     session++;
-    activePointers.clear();
     clearTimeout(introTimer);
     cancelAnimationFrame(frame);
     phase = 'home';
@@ -106,7 +109,7 @@
     el.home.setAttribute('aria-busy', 'true');
     setNotice('Cargando video…');
     el.video.pause();
-    try { await preparePreview(); }
+    try { await mediaReady; await preparePreview(); }
     catch {
       if (session !== activeSession) return;
       phase = 'home';
@@ -143,31 +146,10 @@
   function seekTo(seconds, action = 'seek') {
     if (phase !== 'playing' || !Number.isFinite(el.video.duration)) return;
     const target = Math.max(0, Math.min(el.video.duration, seconds));
-    analytics?.action(action, target);
-    el.video.currentTime = target;
+    seekController.request(target, action);
     updateProgress();
   }
   el.home.addEventListener('click', start);
-  // Keep controls visible while pressing a button or dragging the timeline.
-  [el.controls, el.timeline].forEach(area => {
-    area.addEventListener('pointerdown', event => {
-      if (phase !== 'playing') return;
-      activePointers.add(event.pointerId);
-      clearTimeout(controlsTimer);
-    });
-    ['pointermove', 'click', 'input', 'keydown'].forEach(type => {
-      area.addEventListener(type, resetControlsTimer);
-    });
-  });
-  ['pointerup', 'pointercancel'].forEach(type => {
-    window.addEventListener(type, event => {
-      if (activePointers.delete(event.pointerId)) resetControlsTimer();
-    });
-  });
-  window.addEventListener('blur', () => {
-    activePointers.clear();
-    resetControlsTimer();
-  });
   // Explicit pointer feedback also works on touchscreens while holding a button.
   el.controls.querySelectorAll('button').forEach(button => {
     const release = () => button.classList.remove('is-pressed');
@@ -183,11 +165,11 @@
   });
   el.controls.addEventListener('click', event => {
     if (phase !== 'playing') return;
-    switch (event.target.dataset.action) {
+    switch (event.target.closest('button')?.dataset.action) {
       case 'restart': seekTo(0, 'restart'); play(); break;
-      case 'back': seekTo(el.video.currentTime - 10, 'backward'); break;
+      case 'back': seekTo(seekController.position - 10, 'backward'); break;
       case 'toggle': el.video.paused ? play() : el.video.pause(); break;
-      case 'forward': seekTo(el.video.currentTime + 10, 'forward'); break;
+      case 'forward': seekTo(seekController.position + 10, 'forward'); break;
       case 'home': analytics?.action('home'); returnHome(); break;
     }
   });
